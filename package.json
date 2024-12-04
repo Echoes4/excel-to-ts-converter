@@ -1,0 +1,55 @@
+{
+  "name": "excel-to-ts-converter",
+  "version": "1.0.0",
+  "description": "Convert Excel files to TypeScript interfaces and data",
+  "author": "Yanis Jiang",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/echoeureka/excel-to-ts-converter.git"
+  },
+  "keywords": [
+    "excel",
+    "typescript",
+    "converter",
+    "electron",
+    "desktop"
+  ],
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "electron-builder install-app-deps",
+    "build": "electron-builder --win"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.excel.ts.converter",
+    "productName": "Excel To TypeScript Converter",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "src/icon.ico",
+      "signingHashAlgorithms": null,
+      "signAndEditExecutable": false
+    },
+    "forceCodeSigning": false
+  }
+}
