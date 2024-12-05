@@ -5,6 +5,48 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>Excel To TypeScript Converter</title>
     <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            min-height: 100vh;
+        }
+
+        .header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .preview-section {
+            background-color: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .preview-header {
+            font-size: 1.2rem;
+            color: #495057;
+            margin-bottom: 1rem;
+        }
+
         .button {
             padding: 10px 20px;
             font-size: 16px;
@@ -14,36 +56,102 @@
             color: white;
             border: none;
             border-radius: 4px;
+            transition: background-color 0.2s;
         }
         .button:hover {
             background-color: #45a049;
         }
-        .container {
-            padding: 20px;
+        .select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 2px solid #ddd;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .select:focus {
+            border-color: #2196F3;
+        }
+        .save-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .save-button:hover {
+            background-color: #1976D2;
+        }
+        .save-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        #interfaceNameInput {
+            width: 250px;
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        #interfaceNameInput:focus {
+            border-color: #2196F3;
+        }
+        #out {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.5;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <button class="button" onclick="document.getElementById('fileInput').click()">
-            选择Excel文件
-        </button>
-        <input type="file" id="fileInput" style="display: none" accept=".xlsx,.xls" />
-        
-        <div>
-            <pre>
-Output Format: <select name="format" onchange="setfmt()">
-    <option value="js">TypeScript</option>
-</select>
-
-Use Web Workers when available: <input type="checkbox" name="useworker">
-Always use UTF8 for CSV / text: <input type="checkbox" name="useutf8">
-            </pre>
+        <div class="header">
+            <h1>Excel To TypeScript Converter</h1>
         </div>
-
-        <pre id="out"></pre>
-        <div id="htmlout"></div>
+        
+        <div class="controls">
+            <div>
+                <button class="button" onclick="document.getElementById('fileInput').click()">
+                    选择Excel文件
+                </button>
+                <input type="file" id="fileInput" style="display: none" accept=".xlsx,.xls" />
+            </div>
+            
+            <select id="sheetSelect" name="sheet" class="select" onchange="setfmt()">
+                <option value="">请先选择Excel文件</option>
+            </select>
+            
+            <input type="text" id="interfaceNameInput" class="select" 
+                onchange="setfmt()" placeholder="输入接口名或使用sheet名">
+            
+            <select name="format" class="select" onchange="setfmt()">
+                <option value="js">TypeScript</option>
+                <option value="javascript">JavaScript</option>
+            </select>
+            
+            <button id="saveButton" class="save-button" onclick="handleSave()" disabled>
+                保存为 TypeScript
+            </button>
+        </div>
+        
+        <div class="preview-section">
+            <div class="preview-header">预览</div>
+            <pre id="out"></pre>
+            <div id="htmlout"></div>
+        </div>
     </div>
 
     <script src="dist/shim.min.js"></script>
@@ -51,153 +159,291 @@ Always use UTF8 for CSV / text: <input type="checkbox" name="useutf8">
     <script>
         var global_wb;
         var global_filename;
+        var current_output = "";
+
+        function updateSheetList(wb) {
+            const sheetSelect = document.getElementById('sheetSelect');
+            const previousSheet = sheetSelect.value; // 保存之前选择的sheet
+            sheetSelect.innerHTML = ''; // 清空现有选项
+            
+            // 添加所有sheet选项
+            wb.SheetNames.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                sheetSelect.appendChild(option);
+            });
+            
+            // 尝试保持之前选择的sheet，如果不存在则选择第一个
+            if (wb.SheetNames.length > 0) {
+                if (wb.SheetNames.includes(previousSheet)) {
+                    sheetSelect.value = previousSheet;
+                    document.getElementById('interfaceNameInput').value = previousSheet;
+                } else {
+                    sheetSelect.value = wb.SheetNames[0];
+                    document.getElementById('interfaceNameInput').value = wb.SheetNames[0];
+                }
+                // 触发格式化以更新预览
+                setfmt();
+            }
+        }
 
         var process_wb = (function () {
             var OUT = document.getElementById('out');
 
-            var get_format = (function () {
-                var radios = document.getElementsByName("format");
-                return function () {
-                    for (var i = 0; i < radios.length; ++i) if (radios[i].checked || radios.length === 1) return radios[i].value;
-                };
-            })();
-
             var to_ts = function to_ts(workbook, filename) {
                 var result = {};
-                var sheetName = 'Sheet1';
-                if (workbook.Sheets[sheetName]) {
-                    var roa = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { 
-                        header: 1
-                    });
-                    if (roa.length > 2) {
-                        var headers = roa[1];
-                        var data = roa.slice(2).filter(row => row[0] !== undefined && row[0] !== "").map((row) => {
-                            var obj = {};
-                            headers.forEach((header, colIndex) => {
-                                const cell = row[colIndex];
-                                if (cell === undefined || cell === "") {
-                                    obj[header] = null;
-                                } else {
-                                    const numValue = Number(cell);
-                                    if (!isNaN(numValue) && !String(cell).includes("-")) {
-                                        obj[header] = numValue;
-                                    } else {
-                                        obj[header] = cell;
-                                    }
-                                }
-                            });
-                            return obj;
-                        });
-                        data.forEach((item) => {
-                            var key = item[headers[0]];
-                            result[key] = item;
-                        });
-                    }
+                var sheetName = document.getElementById('sheetSelect').value;
+                var customInterfaceName = document.getElementById('interfaceNameInput').value.trim();
+                
+                // 检查sheet是否存在
+                if (!workbook.Sheets[sheetName]) {
+                    // 如果当前sheet不存在，更新sheet列表并使用第一个sheet
+                    sheetName = workbook.SheetNames[0];
+                    updateSheetList(workbook);
+                    // 重新获取更新后的值
+                    sheetName = document.getElementById('sheetSelect').value;
+                }
+                
+                // 获取sheet数据
+                var roa = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { 
+                    header: 1
+                });
+                
+                // 检查数据是否有效
+                if (!Array.isArray(roa) || roa.length < 2 || !Array.isArray(roa[1])) {
+                    console.error('Excel数据格式无效');
+                    return '// 错误: Excel数据格式无效';
                 }
 
-                var interfaceName = filename.charAt(0).toUpperCase() + filename.slice(1) + "Data";
-                var tsCode = `export interface ${interfaceName} {\n`;
+                // 如果用户没有输入接口名，使用当前sheet名
+                var interfaceName = customInterfaceName || sheetName;
+                // 确保接口名首字母大写，并移除特殊字符
+                interfaceName = interfaceName
+                    .replace(/[^a-zA-Z0-9_]/g, '')  // 移除特殊字符
+                    .replace(/^[0-9]/, 'I$&')       // 如果以数字开头，添加'I'前缀
+                    .replace(/^[a-z]/, c => c.toUpperCase()); // 确保首字母大写
+                
+                if (!interfaceName) {
+                    interfaceName = 'IExcelData'; // 默认接口名
+                }
 
-                if (data.length > 0) {
-                    var firstItem = data[0];
-                    for (var prop in firstItem) {
-                        let hasNumber = false;
-                        let hasString = false;
-                        data.forEach(item => {
-                            if (item[prop] !== null) {
-                                if (typeof item[prop] === 'number') hasNumber = true;
-                                if (typeof item[prop] === 'string') hasString = true;
+                var headers = roa[1];
+                // 检查headers是否有效
+                if (headers && headers.length > 0) {
+                    var data = roa.slice(2).filter(row => row[0] !== undefined && row[0] !== "").map((row) => {
+                        var obj = {};
+                        headers.forEach((header, colIndex) => {
+                            if (!header) return; // 跳过空的header
+                            const cell = row[colIndex];
+                            if (cell === undefined || cell === "") {
+                                obj[header] = null;
+                            } else {
+                                const numValue = Number(cell);
+                                if (!isNaN(numValue) && !String(cell).includes("-")) {
+                                    obj[header] = numValue;
+                                } else {
+                                    obj[header] = cell;
+                                }
                             }
                         });
-                        
-                        let typeStr = '';
-                        if (hasNumber && !hasString) typeStr = 'number';
-                        else if (!hasNumber && hasString) typeStr = 'string';
-                        else if (hasNumber && hasString) typeStr = 'number | string';
-                        else typeStr = 'string';
-                        
-                        tsCode += `    ${prop}: ${typeStr} | null;\n`;
+                        return obj;
+                    });
+                    data.forEach((item) => {
+                        if (headers[0] && item[headers[0]] !== undefined) {
+                            var key = item[headers[0]];
+                            result[key] = item;
+                        }
+                    });
+                }
+
+                const formatSelect = document.querySelector('select[name="format"]');
+                const get_format = formatSelect.options[formatSelect.selectedIndex].value;
+                var code = '';
+                
+                if (get_format === 'js') {
+                    // TypeScript 格式
+                    code = `export interface ${interfaceName} {\n`;
+                    if (data.length > 0) {
+                        var firstItem = data[0];
+                        for (var prop in firstItem) {
+                            let hasNumber = false;
+                            let hasString = false;
+                            data.forEach(item => {
+                                if (item[prop] !== null) {
+                                    if (typeof item[prop] === 'number') hasNumber = true;
+                                    if (typeof item[prop] === 'string') hasString = true;
+                                }
+                            });
+                            
+                            let typeStr = '';
+                            if (hasNumber && !hasString) typeStr = 'number';
+                            else if (!hasNumber && hasString) typeStr = 'string';
+                            else if (hasNumber && hasString) typeStr = 'number | string';
+                            else typeStr = 'string';
+                            
+                            code += `    ${prop}: ${typeStr} | null;\n`;
+                        }
                     }
+                    code += `}\n\n`;
+                    code += `export var ${sheetName}: Record<number, ${interfaceName}> = {\n`;
+                } else {
+                    // JavaScript 格式
+                    code = `/**
+ * @typedef {Object} ${interfaceName}
+`;
+                    if (data.length > 0) {
+                        var firstItem = data[0];
+                        for (var prop in firstItem) {
+                            let hasNumber = false;
+                            let hasString = false;
+                            data.forEach(item => {
+                                if (item[prop] !== null) {
+                                    if (typeof item[prop] === 'number') hasNumber = true;
+                                    if (typeof item[prop] === 'string') hasString = true;
+                                }
+                            });
+                            
+                            let typeStr = '';
+                            if (hasNumber && !hasString) typeStr = 'number';
+                            else if (!hasNumber && hasString) typeStr = 'string';
+                            else if (hasNumber && hasString) typeStr = '(number|string)';
+                            else typeStr = 'string';
+                            
+                            code += ` * @property {(${typeStr}|null)} ${prop}\n`;
+                        }
+                    }
+                    code += ` */\n\n`;
+                    code += `/** @type {Object.<number, ${interfaceName}>} */\n`;
+                    code += `export var ${sheetName} = {\n`;
                 }
 
-                tsCode += `}\n\n`;
-                tsCode += `export var ${filename}: Record<number, ${interfaceName}> = {\n`;
+                // 共同的数据部分
                 for (var key in result) {
-                    tsCode += `    ${key}: ${JSON.stringify(result[key]).replace(/"([^"]+)":/g, '$1:')},\n`;
+                    code += `    ${key}: ${JSON.stringify(result[key]).replace(/"([^"]+)":/g, '$1:')},\n`;
                 }
-                tsCode += `};\n`;
+                code += `};\n`;
 
-                return tsCode;
+                return code;
             };
 
             return function process_wb(wb, filename) {
                 global_wb = wb;
+                global_filename = filename;
+                
+                if (!document.getElementById('sheetSelect').value) {
+                    updateSheetList(wb);
+                }
+                
                 var output = "";
                 var baseFilename = filename.replace(/\.[^/.]+$/, "");
-                switch (get_format()) {
-                    case "js": output = to_ts(wb, baseFilename); break;
+                const formatSelect = document.querySelector('select[name="format"]');
+                const format = formatSelect.options[formatSelect.selectedIndex].value;
+                switch (format) {
+                    case "js":
+                    case "javascript":
+                        output = to_ts(wb, baseFilename);
+                        break;
                 }
+                
+                current_output = output;
                 OUT.textContent = output;
-
-                if (get_format() === "js") {
-                    window.electronAPI.saveFile(output, baseFilename + ".ts")
-                        .then(result => {
-                            if (result.success) {
-                                console.log('File saved successfully at:', result.path);
-                            } else {
-                                console.error('Failed to save file:', result.error);
-                            }
-                        })
-                        .catch(err => {
-                            console.error('Error saving file:', err);
-                        });
-                }
+                
+                document.getElementById('saveButton').disabled = false;
+                document.getElementById('saveButton').textContent = 
+                    `保存为 ${format === 'js' ? 'TypeScript' : 'JavaScript'}`;
 
                 if (typeof console !== 'undefined') console.log("output", new Date());
             };
         })();
 
-        var setfmt = window.setfmt = function setfmt() { if (global_wb) process_wb(global_wb, global_filename); };
+        var setfmt = window.setfmt = function setfmt() { 
+            if (global_wb) {
+                process_wb(global_wb, global_filename);
+            } else {
+                // 即使没有件，也要按钮文字
+                const formatSelect = document.querySelector('select[name="format"]');
+                const format = formatSelect.options[formatSelect.selectedIndex].value;
+                document.getElementById('saveButton').textContent = 
+                    `保存为 ${format === 'js' ? 'TypeScript' : 'JavaScript'}`;
+            }
+        };
 
-        var do_file = (function () {
-            var use_worker = typeof Worker !== 'undefined';
-            var domwork = document.getElementsByName("useworker")[0];
-            if (!use_worker) domwork.disabled = !(domwork.checked = false);
+        // 页面加载时设置初始按钮文字
+        document.addEventListener('DOMContentLoaded', function() {
+            const formatSelect = document.querySelector('select[name="format"]');
+            const format = formatSelect.options[formatSelect.selectedIndex].value;
+            document.getElementById('saveButton').textContent = 
+                `保存为 ${format === 'js' ? 'TypeScript' : 'JavaScript'}`;
+        });
 
-            var use_utf8 = false;
-
-            var xw = function xw(data, cb, filename) {
-                var worker = new Worker('./xlsxworker.js');
-                worker.onmessage = function (e) {
-                    switch (e.data.t) {
-                        case 'ready': break;
-                        case 'e': console.error(e.data.d); break;
-                        case 'xlsx': cb(JSON.parse(e.data.d), filename); break;
-                    }
-                };
-                worker.postMessage({ d: data, b: 'array', c: use_utf8 ? 65001 : void 0 });
+        var do_file = function(files) {
+            var f = files[0];
+            global_filename = f.name;
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                var data = new Uint8Array(e.target.result);
+                process_wb(XLSX.read(data, { type: 'array' }), global_filename);
             };
+            reader.readAsArrayBuffer(f);
+        };
 
-            return function do_file(files) {
-                use_worker = domwork.checked;
-                use_utf8 = document.getElementsByName("useutf8")[0].checked;
-                var f = files[0];
-                global_filename = f.name;
-                var reader = new FileReader();
-                reader.onload = function (e) {
-                    var data = new Uint8Array(e.target.result);
-                    if (use_worker) xw(data, process_wb, global_filename);
-                    else process_wb(XLSX.read(data, { type: 'array', codepage: use_utf8 ? 65001 : void 0 }), global_filename);
-                };
-                reader.readAsArrayBuffer(f);
-            };
-        })();
+        async function handleSave() {
+            if (!current_output || !global_filename) {
+                alert('请先选择并处Excel文件');
+                return;
+            }
 
-        // 添加文件输入监听
+            try {
+                // 获取当前的接口名作为文件名基础
+                const sheetName = document.getElementById('sheetSelect').value;
+                const customInterfaceName = document.getElementById('interfaceNameInput').value.trim();
+                const interfaceName = (customInterfaceName || sheetName)
+                    .replace(/[^a-zA-Z0-9_]/g, '')  // 移除特殊字符
+                    .replace(/^[0-9]/, 'I$&')       // 如果以数字开头，添加'I'前缀
+                    .replace(/^[a-z]/, c => c.toUpperCase()); // 确保首字母大写
+
+                // 获取当前格式
+                const format = document.getElementsByName("format")[0].value;
+                const extension = format === 'js' ? 'ts' : 'js';
+                
+                // 使用接口名作为默认文件名
+                const defaultFilename = `${interfaceName || 'IExcelData'}.${extension}`;
+
+                // 调用保存对话框
+                const result = await window.electron.showSaveDialog({
+                    defaultPath: defaultFilename,
+                    filters: [
+                        { 
+                            name: format === 'js' ? 'TypeScript' : 'JavaScript', 
+                            extensions: [extension] 
+                        }
+                    ]
+                });
+
+                if (result.filePath) {
+                    const data = {
+                        filePath: result.filePath,
+                        fileBuffer: Array.from(new TextEncoder().encode(current_output))
+                    };
+                    
+                    await window.electron.saveFile(data);
+                    console.log('文件保存成功');
+                    alert('文件保存成功！');
+                }
+            } catch (error) {
+                console.error('保存文件失败:', error);
+                alert('保存文件失败，请重试');
+            }
+        }
+
+        // 添加文件输入框的change事件监听器
         document.getElementById('fileInput').addEventListener('change', function(e) {
             if (e.target.files.length > 0) {
                 do_file(e.target.files);
+                document.getElementById('saveButton').disabled = true;
             }
+            this.value = ''; // 清空input的value，这样可以选择同一个文件
         });
     </script>
 </body>

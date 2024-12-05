@@ -1,37 +1,26 @@
 {
-  "name": "excel-to-ts-converter",
-  "version": "1.0.0",
-  "description": "Convert Excel files to TypeScript interfaces and data",
-  "author": "Yanis Jiang",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/echoeureka/excel-to-ts-converter.git"
-  },
-  "keywords": [
-    "excel",
-    "typescript",
-    "converter",
-    "electron",
-    "desktop"
-  ],
+  "name": "excel-to-typescript",
+  "version": "1.0.1",
+  "description": "Convert Excel to TypeScript interface",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "postinstall": "electron-builder install-app-deps",
-    "build": "electron-builder --win"
-  },
-  "dependencies": {
-  },
-  "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.0.0"
+    "build:portable": "electron-builder --win portable",
+    "build:setup": "electron-builder --win nsis",
+    "publish": "electron-builder --win -p always"
   },
   "build": {
-    "appId": "com.excel.ts.converter",
+    "appId": "com.excel.typescript.converter",
     "productName": "Excel To TypeScript Converter",
+    "icon": "build/icon.ico",
+    "publish": {
+      "provider": "github",
+      "owner": "Echoes4",
+      "repo": "excel-to-typescript"
+    },
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "build"
     },
     "files": [
       "src/**/*",
@@ -39,17 +28,45 @@
     ],
     "win": {
       "target": [
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
+        "portable",
+        "nsis"
       ],
-      "icon": "src/icon.ico",
-      "signingHashAlgorithms": null,
-      "signAndEditExecutable": false
+      "icon": "build/icon.ico",
+      "executableName": "ExcelToTypeScript",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "publisherName": [
+        "Your Name"
+      ]
     },
-    "forceCodeSigning": false
+    "portable": {
+      "artifactName": "${productName}-portable-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Excel To TypeScript",
+      "uninstallDisplayName": "Excel To TypeScript",
+      "artifactName": "${productName}-setup-${version}.exe",
+      "deleteAppDataOnUninstall": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "include": "build/installer.nsh",
+      "removeDefaultUninstallWelcomePage": true,
+      "runAfterFinish": true,
+      "perMachine": true
+    },
+    "asar": true
+  },
+  "author": {
+    "name": "Your Name",
+    "email": "your.email@example.com"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.1.0",
+    "electron-builder": "23.6.0"
   }
 }
