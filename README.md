@@ -14,7 +14,7 @@
 
 ## 下载安装
 
-您可以从 [GitHub Releases](https://github.com/Echoes4/excel-to-typescript/releases) 页面下载最新版本：
+您可以从 [GitHub Releases](https://github.com/Echoes4/excel-to-ts-converter/releases) 页面下载最新版本：
 
 - **便携版**：下载 `Excel To TypeScript Converter-portable-{version}.exe`
 - **安装版**：下载 `Excel To TypeScript Converter-setup-{version}.exe`
