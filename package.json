@@ -1,6 +1,6 @@
 {
   "name": "excel-to-typescript",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Convert Excel to TypeScript interface",
   "main": "src/main.js",
   "scripts": {
