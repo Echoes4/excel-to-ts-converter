@@ -6,7 +6,7 @@
 
 - 支持 Excel 文件 (.xlsx, .xls) 转换
 - 自动生成 TypeScript 接口定义
-- 自动推断数据类型（number | string）
+- 手动设置数据类型(更精确)
 - 支持多个工作表（Sheet）
 - 支持自定义接口名称
 - 支持导出为 TypeScript (.ts) 或 JavaScript (.js) 文件
@@ -73,11 +73,10 @@ excel-to-typescript/
 ### Excel 输入
 
 ```
-| 说明  | ID   | 名称  | 类型 | 价格  |
-|-----|------|------|-----|------|
-| id   | name | type | price |
-| 1001 | 商品A | 1    | 99.9 |
-| 1002 | 商品B | 2    | 199.9 |
+| id       | name    | type   | price  |
+| number   | string  | number | nubmer |
+| 1001     | 商品A   | 1      | 99.9   |
+| 1002     | 商品B   | 2      | 199.9  |
 ```
 
 ### TypeScript 输出

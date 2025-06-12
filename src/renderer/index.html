@@ -211,13 +211,22 @@
                 });
                 
                 // 检查数据是否有效
-                if (!Array.isArray(roa) || roa.length < 2 || !Array.isArray(roa[1])) {
+                if (!Array.isArray(roa) || roa.length < 3 || !Array.isArray(roa[1])) {
                     console.error('Excel数据格式无效');
-                    return '// 错误: Excel数据格式无效';
+                    return '// 错误: Excel数据格式无效，需要至少包含字段名行和类型描述行';
                 }
 
-                // 如果用户没有输入接口名，使用当前sheet名
-                var interfaceName = customInterfaceName || sheetName;
+                // 如果用户没有输入接口名，根据sheet数量决定使用文件名还是sheet名
+                var interfaceName = customInterfaceName;
+                if (!interfaceName) {
+                    if (workbook.SheetNames.length === 1) {
+                        // 只有一个sheet时使用文件名
+                        interfaceName = filename.replace(/\.[^/.]+$/, "");
+                    } else {
+                        // 多个sheet时使用sheet名
+                        interfaceName = sheetName;
+                    }
+                }
                 // 确保接口名首字母大写，并移除特殊字符
                 interfaceName = interfaceName
                     .replace(/[^a-zA-Z0-9_]/g, '')  // 移除特殊字符
@@ -228,7 +237,8 @@
                     interfaceName = 'IExcelData'; // 默认接口名
                 }
 
-                var headers = roa[1];
+                var headers = roa[0]; // 第一行是字段名
+                var types = roa[1];   // 第二行是类型
                 // 检查headers是否有效
                 if (headers && headers.length > 0) {
                     var data = roa.slice(2).filter(row => row[0] !== undefined && row[0] !== "").map((row) => {
@@ -264,26 +274,12 @@
                 if (get_format === 'js') {
                     // TypeScript 格式
                     code = `export interface ${interfaceName} {\n`;
-                    if (data.length > 0) {
-                        var firstItem = data[0];
-                        for (var prop in firstItem) {
-                            let hasNumber = false;
-                            let hasString = false;
-                            data.forEach(item => {
-                                if (item[prop] !== null) {
-                                    if (typeof item[prop] === 'number') hasNumber = true;
-                                    if (typeof item[prop] === 'string') hasString = true;
-                                }
-                            });
-                            
-                            let typeStr = '';
-                            if (hasNumber && !hasString) typeStr = 'number';
-                            else if (!hasNumber && hasString) typeStr = 'string';
-                            else if (hasNumber && hasString) typeStr = 'number | string';
-                            else typeStr = 'string';
-                            
-                            code += `    ${prop}: ${typeStr} | null;\n`;
-                        }
+                    if (headers && headers.length > 0) {
+                        headers.forEach((header, index) => {
+                            if (!header) return; // 跳过空的header
+                            const type = types[index] || 'string';
+                            code += `    ${header}: ${type} | null;\n`;
+                        });
                     }
                     code += `}\n\n`;
                     code += `export var ${sheetName}: Record<number, ${interfaceName}> = {\n`;
@@ -292,26 +288,12 @@
                     code = `/**
  * @typedef {Object} ${interfaceName}
 `;
-                    if (data.length > 0) {
-                        var firstItem = data[0];
-                        for (var prop in firstItem) {
-                            let hasNumber = false;
-                            let hasString = false;
-                            data.forEach(item => {
-                                if (item[prop] !== null) {
-                                    if (typeof item[prop] === 'number') hasNumber = true;
-                                    if (typeof item[prop] === 'string') hasString = true;
-                                }
-                            });
-                            
-                            let typeStr = '';
-                            if (hasNumber && !hasString) typeStr = 'number';
-                            else if (!hasNumber && hasString) typeStr = 'string';
-                            else if (hasNumber && hasString) typeStr = '(number|string)';
-                            else typeStr = 'string';
-                            
-                            code += ` * @property {(${typeStr}|null)} ${prop}\n`;
-                        }
+                    if (headers && headers.length > 0) {
+                        headers.forEach((header, index) => {
+                            if (!header) return; // 跳过空的header
+                            const type = types[index] || 'string';
+                            code += ` * @property {(${type}|null)} ${header}\n`;
+                        });
                     }
                     code += ` */\n\n`;
                     code += `/** @type {Object.<number, ${interfaceName}>} */\n`;
@@ -383,7 +365,19 @@
             var reader = new FileReader();
             reader.onload = function (e) {
                 var data = new Uint8Array(e.target.result);
-                process_wb(XLSX.read(data, { type: 'array' }), global_filename);
+                var wb = XLSX.read(data, { type: 'array' });
+                
+                // 更新接口名称输入框
+                const interfaceNameInput = document.getElementById('interfaceNameInput');
+                if (wb.SheetNames.length === 1) {
+                    // 只有一个sheet时使用文件名
+                    interfaceNameInput.value = global_filename.replace(/\.[^/.]+$/, "");
+                } else {
+                    // 多个sheet时使用第一个sheet名
+                    interfaceNameInput.value = wb.SheetNames[0];
+                }
+                
+                process_wb(wb, global_filename);
             };
             reader.readAsArrayBuffer(f);
         };
